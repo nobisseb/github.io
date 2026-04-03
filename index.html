@@ -294,6 +294,32 @@
         
         var defaultAddresses = {"Automationsbolaget": [59.9177051, 16.6033002], "Lincom": [58.5909124, 16.1903511], "Intec": [59.3363722, 18.0725024], "Processus": [59.332431, 18.0527154], "NCE": [63.6744703, 22.7055385]};
         
+        // Save addresses to localStorage
+        function saveAddressesToStorage() {
+            var storageData = {
+                addresses: addresses,
+                circleVisibility: circleVisibility
+            };
+            localStorage.setItem('finlandMapAddresses', JSON.stringify(storageData));
+        }
+        
+        // Load addresses from localStorage
+        function loadAddressesFromStorage() {
+            var stored = localStorage.getItem('finlandMapAddresses');
+            if (stored) {
+                try {
+                    var data = JSON.parse(stored);
+                    addresses = data.addresses || {};
+                    circleVisibility = data.circleVisibility || {};
+                    return true;
+                } catch (e) {
+                    console.log('Error loading saved addresses, using defaults');
+                    return false;
+                }
+            }
+            return false;
+        }
+        
         // Add address to map
         function addAddress(name, lat, lng) {
             var key = name + ' (' + lat.toFixed(4) + ', ' + lng.toFixed(4) + ')';
@@ -315,6 +341,7 @@
                 markers.push(marker);
                 circles.push(circle);
                 updateDisplay();
+                saveAddressesToStorage();
             }
         }
         
@@ -330,6 +357,7 @@
                     markerGroup.removeLayer(markers[idx]);
                     markerGroup.removeLayer(circles[idx]);
                 }
+                saveAddressesToStorage();
             }
         }
         
@@ -371,6 +399,7 @@
             markers = tempMarkers;
             circles = tempCircles;
             updateDisplay();
+            saveAddressesToStorage();
         }
         
         // Update display
@@ -392,10 +421,36 @@
             document.getElementById('addressList').innerHTML = html;
         }
         
-        // Initialize with defaults
-        for (var name in defaultAddresses) {
-            var coords = defaultAddresses[name];
-            addAddress(name, coords[0], coords[1]);
+        // Initialize with saved addresses or defaults
+        if (!loadAddressesFromStorage()) {
+            // If no saved data, use defaults
+            markerGroup.clearLayers();
+            markers = [];
+            circles = [];
+            for (var name in defaultAddresses) {
+                var coords = defaultAddresses[name];
+                addAddress(name, coords[0], coords[1]);
+            }
+        } else {
+            // If loaded from storage, recreate markers and circles
+            markerGroup.clearLayers();
+            markers = [];
+            circles = [];
+            for (var key in addresses) {
+                var addr = addresses[key];
+                var marker = L.marker([addr.lat, addr.lng]).bindPopup(addr.name).addTo(markerGroup);
+                var circle = L.circle([addr.lat, addr.lng], {
+                    color: 'blue',
+                    fill: true,
+                    fillColor: 'blue',
+                    fillOpacity: 0.3,
+                    weight: 2,
+                    radius: 5000
+                }).addTo(markerGroup);
+                markers.push(marker);
+                circles.push(circle);
+            }
+            updateDisplay();
         }
         map.fitBounds([[55.0, 4.0], [70.0, 31.0]]);
         
